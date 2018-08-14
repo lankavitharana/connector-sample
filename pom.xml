@@ -5,7 +5,7 @@
     <groupId>org.sample</groupId>
     <artifactId>connector-sample</artifactId>
     <packaging>jar</packaging>
-    <version>0.95.0-SNAPSHOT</version>
+    <version>0.981.0-SNAPSHOT</version>
     <name>Sample connector</name>
 
     <repositories>
@@ -69,16 +69,23 @@
             <artifactId>ballerina-builtin</artifactId>
             <version>${ballerina.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.ballerinalang</groupId>
+            <artifactId>ballerina-builtin</artifactId>
+            <type>zip</type>
+            <classifier>ballerina-binary-repo</classifier>
+            <version>${ballerina.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.ballerinalang</groupId>
+            <artifactId>ballerina-runtime</artifactId>
+            <type>zip</type>
+            <classifier>ballerina-binary-repo</classifier>
+            <version>${ballerina.version}</version>
+        </dependency>
     </dependencies>
 
     <build>
-        <resources>
-            <!-- copy built-in ballerina sources to the jar -->
-            <resource>
-                <directory>${project.build.directory}/../src/main/ballerina</directory>
-                <targetPath>META-INF/natives</targetPath>
-            </resource>
-        </resources>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -93,13 +100,12 @@
             <plugin>
                 <groupId>org.bsc.maven</groupId>
                 <artifactId>maven-processor-plugin</artifactId>
-                <version>${mvn.processor.plugin.version}</version>
                 <configuration>
                     <processors>
                         <processor>org.ballerinalang.codegen.BallerinaAnnotationProcessor</processor>
                     </processors>
                     <options>
-                        <nativeEntityProviderPackage>org.sample.con.print.generated</nativeEntityProviderPackage>
+                        <nativeEntityProviderPackage>org.wso2.samplecon.generated.providers</nativeEntityProviderPackage>
                         <nativeEntityProviderClass>StandardNativeElementProvider</nativeEntityProviderClass>
                     </options>
                 </configuration>
@@ -113,11 +119,76 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <inherited>false</inherited>
+                <executions>
+                    <!-- Following execution unpacks balo dependencies (ballerina-binary-repo) -->
+                    <execution>
+                        <id>unpack-dependencies</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>unpack-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <includeClassifiers>ballerina-binary-repo</includeClassifiers>
+                            <outputDirectory>${project.build.directory}/lib</outputDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <executions>
+                    <!-- Following execution generates balo for mongodb package -->
+                    <execution>
+                        <id>gen-balo</id>
+                        <goals>
+                            <goal>java</goal>
+                        </goals>
+                        <phase>compile</phase>
+                        <configuration>
+                            <systemProperties>
+                                <systemProperty>
+                                    <key>BALLERINA_DEV_MODE_COMPILE</key>
+                                    <value>true</value>
+                                </systemProperty>
+                            </systemProperties>
+                            <arguments>
+                                <argument>false</argument>
+                                <argument>${basedir}/src/main/ballerina/</argument>
+                                <argument>${project.build.directory}/generated-balo/repo/wso2</argument>
+                                <argument>${project.build.directory}</argument>
+                                <argument>${project.version}</argument>
+                            </arguments>
+                            <mainClass>org.ballerinalang.stdlib.utils.GenerateBalo</mainClass>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>distribution</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>attached</goal>
+                        </goals>
+                        <configuration>
+                            <descriptorSourceDirectory>assembly</descriptorSourceDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 
     <properties>
-        <ballerina.version>0.95.0</ballerina.version>
+        <ballerina.version>0.981.0</ballerina.version>
         <carbon.transport.version>6.0.41</carbon.transport.version>
         <mvn.processor.plugin.version>2.2.4</mvn.processor.plugin.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
